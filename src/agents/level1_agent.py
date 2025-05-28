@@ -24,7 +24,7 @@ class Level1Agent(AgentBase):
                 "num_heads": 4,
                 "num_layers": 2,
                 "dropout": 0.1,
-                "policy_hidden_dim": [128, 64],
+                "policy_hidden_dims": [128, 64],
                 "news_action_dim": 32,
                 "distribution_action_dim": 16,
                 "learning_rate": 0.0003,
@@ -44,20 +44,20 @@ class Level1Agent(AgentBase):
         # Policy networks for news generation and distribution decisions
         self.news_policy = PolicyNetwork(
             input_dim=config["embedding_dim"],
-            hidden_dim=config["policy_hidden_dim"],
+            hidden_dims=config["policy_hidden_dims"],
             output_dim=config["news_action_dim"],
         ).to(self.device)
 
         self.distribution_policy = PolicyNetwork(
             input_dim=config["embedding_dim"],
-            hidden_dim=config["policy_hidden_dim"],
+            hidden_dims=config["policy_hidden_dims"],
             output_dim=config["distribution_action_dim"],
         ).to(self.device)
 
         # Value network for critic
         self.value_network = PolicyNetwork(
             input_dim=config["embedding_dim"],
-            hidden_dim=config["policy_hidden_dim"],
+            hidden_dims=config["policy_hidden_dims"],
             output_dim=1,
         ).to(self.device)
 

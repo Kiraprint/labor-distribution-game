@@ -22,7 +22,7 @@ class Level2Agent(AgentBase):
                 "num_heads": 4,
                 "num_layers": 2,
                 "dropout": 0.1,
-                "policy_hidden_dim": [128, 64],
+                "policy_hidden_dims": [128, 64],
                 "trust_action_dim": 16,
                 "coalition_action_dim": 32,
                 "learning_rate": 0.0003,
@@ -45,20 +45,20 @@ class Level2Agent(AgentBase):
         # Policy networks for trust evaluation and coalition decisions
         self.trust_policy = PolicyNetwork(
             input_dim=config["embedding_dim"] + config["news_embedding_dim"],
-            hidden_dim=config["policy_hidden_dim"],
+            hidden_dims=config["policy_hidden_dims"],
             output_dim=config["trust_action_dim"],
         ).to(self.device)
 
         self.coalition_policy = PolicyNetwork(
             input_dim=config["embedding_dim"],
-            hidden_dim=config["policy_hidden_dim"],
+            hidden_dims=config["policy_hidden_dims"],
             output_dim=config["coalition_action_dim"],
         ).to(self.device)
 
         # Value network for critic
         self.value_network = PolicyNetwork(
             input_dim=config["embedding_dim"],
-            hidden_dim=config["policy_hidden_dim"],
+            hidden_dims=config["policy_hidden_dims"],
             output_dim=1,
         ).to(self.device)
 
