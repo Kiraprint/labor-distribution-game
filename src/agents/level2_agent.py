@@ -150,12 +150,31 @@ class Level2Agent(AgentBase):
 
     def form_coalition(self, potential_members, observation=None):
         """Form coalition with trusted members using either rule-based or learned policy"""
-        # Filter members based on trust scores
+        # DEBUG LOGGING
+        print(
+            f"Agent {self.agent_id} forming coalition. Potential members: {potential_members}"
+        )
+        print(f"Current trust scores: {self.trust_scores}")
+
+        # Lower the trust threshold at the beginning to ensure coalitions form
+        adaptive_threshold = max(
+            0.2, self.trust_threshold - 0.3 / (self.current_iteration + 1)
+        )
+
+        # Filter members based on trust scores with adaptive threshold
         trusted_members = [
             member
             for member in potential_members
-            if self.trust_scores.get(member, 0) >= self.trust_threshold
+            if self.trust_scores.get(member, 0) >= adaptive_threshold
         ]
+
+        # ALWAYS form at least a minimal coalition even with no trusted members
+        if not trusted_members and potential_members:
+            # Add at least one member to avoid empty coalitions
+            trusted_members = [potential_members[0]]
+            print(
+                f"Forming minimal coalition with {trusted_members[0]} despite low trust"
+            )
 
         if observation is not None:
             # Use learned policy
@@ -183,6 +202,11 @@ class Level2Agent(AgentBase):
             else:
                 self.coalition = []
                 self.coalition_strategy = None
+
+        # DEBUG LOGGING
+        print(
+            f"Coalition formed: {self.coalition} with strategy: {self.coalition_strategy}"
+        )
 
         return {"coalition": self.coalition, "strategy": self.coalition_strategy}
 

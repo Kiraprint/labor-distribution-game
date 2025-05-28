@@ -7,6 +7,7 @@ from environment.game import Game
 from models.memory_buffer import MemoryBuffer
 from training.ppo_trainer import PPOTrainer
 from utils.embeddings import generate_embeddings
+from utils.logger import get_game_logger, setup_logger
 
 
 def load_config(config_path):
@@ -16,7 +17,11 @@ def load_config(config_path):
 
 def run_simulation(config=None):
     """Run the labor distribution game simulation with learning agents"""
-    print("Initializing game environment...")
+    # Set up logging
+    logger = setup_logger()
+    game_logger = get_game_logger()
+
+    game_logger.info("Initializing game environment...")
     game = Game(config)
 
     # Create memory buffers for each agent type
@@ -53,7 +58,7 @@ def run_simulation(config=None):
     total_iterations = 1000
     train_frequency = 10  # Train every 10 iterations
 
-    print(f"Starting simulation for {total_iterations} iterations...")
+    game_logger.info(f"Starting simulation for {total_iterations} iterations...")
     for i in range(total_iterations):
         # Play one iteration of the game
         game.play_iteration()
@@ -77,13 +82,15 @@ def run_simulation(config=None):
 
         # Training step
         if (i + 1) % train_frequency == 0:
-            print(f"Iteration {i + 1}/{total_iterations} - Training agents...")
+            game_logger.info(
+                f"Iteration {i + 1}/{total_iterations} - Training agents..."
+            )
 
             # Train Level 1 agents
             if level1_buffer.size() > 64:
                 for agent_id, trainer in level1_trainers.items():
                     train_metrics = trainer.train()
-                    print(
+                    game_logger.info(
                         f"  Level1 Agent {agent_id}: Loss={train_metrics.get('policy_loss', 'N/A'):.4f}"
                     )
 
@@ -91,17 +98,23 @@ def run_simulation(config=None):
             if level2_buffer.size() > 64:
                 for agent_id, trainer in level2_trainers.items():
                     train_metrics = trainer.train()
-                    print(
+                    game_logger.info(
                         f"  Level2 Agent {agent_id}: Loss={train_metrics.get('policy_loss', 'N/A'):.4f}"
                     )
 
         # Print progress
         if (i + 1) % 50 == 0:
-            print(f"Iteration {i + 1}/{total_iterations}")
-            print(f"  Avg Level1 Reward: {metrics['level1_rewards'][-1]:.2f}")
-            print(f"  Avg Level2 Reward: {metrics['level2_rewards'][-1]:.2f}")
-            print(f"  Avg Coalition Size: {metrics['coalition_sizes'][-1]:.2f}")
-            print(f"  Avg Trust Score: {metrics['trust_scores'][-1]:.2f}")
+            game_logger.info(f"Iteration {i + 1}/{total_iterations}")
+            game_logger.info(
+                f"  Avg Level1 Reward: {metrics['level1_rewards'][-1]:.2f}"
+            )
+            game_logger.info(
+                f"  Avg Level2 Reward: {metrics['level2_rewards'][-1]:.2f}"
+            )
+            game_logger.info(
+                f"  Avg Coalition Size: {metrics['coalition_sizes'][-1]:.2f}"
+            )
+            game_logger.info(f"  Avg Trust Score: {metrics['trust_scores'][-1]:.2f}")
 
     # Plot results
     plot_metrics(metrics)

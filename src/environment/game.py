@@ -135,8 +135,17 @@ class Game:
 
     def play_iteration(self):
         """Play a single iteration of the game"""
+        print(f"\n========= ITERATION {self.current_iteration} =========")
+
         # Update ground truth at the start of each iteration
         self._update_ground_truth()
+
+        # Update iteration counter for Level2 agents
+        for agent in self.level2_agents:
+            if hasattr(agent, "current_iteration"):
+                agent.current_iteration = self.current_iteration
+            else:
+                agent.current_iteration = 0
 
         # 1.1 Level 1 agents' turn
         self.level1_agent_turn()
@@ -245,9 +254,12 @@ class Game:
         for project_id in self.projects:
             self.projects[project_id]["allocated_resources"] = 0
 
+        print("\n--- PROJECT ALLOCATION ---")
+
         # For each coalition
         for coalition in self.coalitions:
             if not coalition.strategy:
+                print(f"Coalition {coalition.agents} has no strategy!")
                 continue
 
             # Get Level 2 agents in this coalition (they control resources)
@@ -260,6 +272,10 @@ class Game:
                 len(level2_members) * 100
             )  # Assuming each L2 agent has 100 resources
 
+            print(
+                f"Coalition {coalition.agents} with {len(level2_members)} L2 agents has {total_resources} resources"
+            )
+
             # Allocate resources according to coalition strategy
             allocation = coalition.allocate_resources(total_resources)
 
@@ -267,9 +283,16 @@ class Game:
             for project_id, resource_amount in allocation.items():
                 if project_id in self.projects:
                     self.projects[project_id]["allocated_resources"] += resource_amount
+                    print(
+                        f"  Allocated {resource_amount:.1f} resources to {project_id}"
+                    )
+                else:
+                    print(f"  WARNING: Project {project_id} not found!")
 
             # Record projects for this coalition
             coalition.projects = list(allocation.keys())
+
+        print("-------------------------\n")
 
     def calculate_profits(self):
         """Calculate profits for all agents and coalitions"""
@@ -277,9 +300,16 @@ class Game:
         self.agent_profits = defaultdict(float)
         self.coalition_profits = defaultdict(float)
 
+        print("\n--- PROFIT CALCULATION ---")
+
         # Calculate coalition profits based on large projects
         for coalition in self.coalitions:
             total_profit = 0
+
+            if not coalition.projects:
+                print(f"Coalition {coalition.agents} has no projects!")
+                continue
+
             for project_id in coalition.projects:
                 if project_id in self.projects:
                     project = self.projects[project_id]
@@ -288,15 +318,24 @@ class Game:
 
                     # Profit function: highest at optimal allocation, diminishing returns
                     efficiency = 1 - min(1, abs(allocated - optimal) / optimal)
-                    profit = project["current_profitability"] * allocated * efficiency
+                    profit = (
+                        project["current_profitability"] * allocated * efficiency * 0.01
+                    )  # Scale factor
 
                     # Coalition bonus
-                    profit *= self.config["coalition_bonus"] * len(coalition.agents) / 5
+                    coalition_bonus = (
+                        self.config["coalition_bonus"] * len(coalition.agents) / 5
+                    )
+                    profit *= coalition_bonus
 
                     total_profit += profit
+                    print(
+                        f"Project {project_id}: Efficiency {efficiency:.2f}, Profit {profit:.2f}"
+                    )
 
             # Store coalition profit
             self.coalition_profits[tuple(coalition.agents)] = total_profit
+            print(f"Coalition {coalition.agents} total profit: {total_profit:.2f}")
 
         # Calculate Level 1 agent profits from small projects
         for agent in self.level1_agents:
@@ -305,54 +344,66 @@ class Game:
                 sum(self.projects[p]["current_profitability"] for p in self.projects)
                 * self.config["small_project_factor"]
                 / len(self.level1_agents)
-            )
+                * 0.1
+            )  # Scale factor
 
             # Store agent profit
             self.agent_profits[agent.agent_id] = small_project_profit
+            print(f"{agent.agent_id} small project profit: {small_project_profit:.2f}")
 
-        # Calculate Level 2 agent profits from allocations
-        for agent in self.level2_agents:
-            # Base profit is proportional to amount of resources allocated effectively
-            base_profit = 0
-
-            # Check projects this agent's resources contributed to
-            for coalition in self.coalitions:
-                if agent.agent_id in coalition.agents:
-                    # Add profit from this coalition
-                    coalition_size = len(coalition.agents)
-                    agent_profit = (
-                        self.coalition_profits[tuple(coalition.agents)] / coalition_size
-                    )
-                    base_profit += agent_profit
-
-            # Store agent profit
-            self.agent_profits[agent.agent_id] = base_profit
+        print("-------------------------\n")
 
     def distribute_profits(self):
         """Distribute profits to agents and coalitions using Shapley/Owen value"""
+        print("\n--- PROFIT DISTRIBUTION ---")
+
+        # IMPORTANT: Reset agent profits from coalitions to avoid double-counting
+        # Only keep the small project profits for Level1 agents
+        coalition_agent_profits = defaultdict(float)
+
         # Distribute coalition profits
         for coalition in self.coalitions:
             coalition_members = tuple(coalition.agents)
             if coalition_members in self.coalition_profits:
                 total_profit = self.coalition_profits[coalition_members]
 
+                if total_profit == 0:
+                    print(
+                        f"Coalition {coalition_members} has zero profit to distribute"
+                    )
+                    continue
+
                 # Calculate profit distribution
                 distribution = coalition.calculate_profit_distribution(
                     total_profit, method=self.config["profit_distribution_method"]
                 )
 
+                print(
+                    f"Coalition {coalition_members} distributing {total_profit:.2f} profit:"
+                )
+
                 # Update individual agent profits
                 for agent_id, profit in distribution.items():
-                    self.agent_profits[agent_id] += profit
+                    coalition_agent_profits[agent_id] += profit
+                    print(f"  {agent_id} receives {profit:.2f}")
+
+        # Combine small project profits and coalition profits
+        for agent_id in self.agent_profits:
+            if agent_id in coalition_agent_profits:
+                self.agent_profits[agent_id] += coalition_agent_profits[agent_id]
 
         # Notify each agent of their profits
         for agent in self.level1_agents + self.level2_agents:
             profit = self.agent_profits[agent.agent_id]
+            print(f"{agent.agent_id} final profit: {profit:.2f}")
+
             agent.update(
                 reward=profit,
                 next_observation=self._get_agent_observation(agent),
                 done=False,
             )
+
+        print("-------------------------\n")
 
     def update_agents(self):
         """Agents analyze results and update strategies for next iteration"""
