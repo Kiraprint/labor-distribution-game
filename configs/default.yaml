@@ -1,0 +1,32 @@
+default_config:
+  agent_levels:
+    level1: 
+      num_agents: 10
+      resource_distribution_strategy: "random"
+    level2: 
+      num_agents: 5
+      coalition_strategy: "trust_based"
+  game:
+    max_iterations: 100
+    profit_distribution_method: "shapley"
+    news_trust_threshold: 0.7
+  environment:
+    project_types:
+      - "large"
+      - "small"
+    profit_function:
+      large_project: 
+        base_profit: 1000
+        variance: 200
+      small_project: 
+        base_profit: 200
+        variance: 50
+  training:
+    batch_size: 32
+    learning_rate: 0.001
+    discount_factor: 0.99
+    num_epochs: 10
+    replay_buffer_size: 10000
+  logging:
+    log_level: "INFO"
+    log_file: "game_log.txt"

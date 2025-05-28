@@ -1,0 +1,21 @@
+environment:
+  num_agents_level1: 10
+  num_agents_level2: 5
+  max_iterations: 100
+  profit_distribution_method: "shapley"  # Options: "shapley", "owen"
+  news_trust_threshold: 0.7
+  initial_resources:
+    level1_agent: 100
+    level2_agent: 200
+  project_profit_function:
+    base_profit: 50
+    profit_variability: 20
+  coalition_formation:
+    min_coalition_size: 2
+    max_coalition_size: 5
+  agent_behavior:
+    exploration_rate: 0.1
+    exploitation_rate: 0.9
+  logging:
+    log_level: "INFO"
+    log_file: "game_log.txt"
